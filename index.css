@@ -1,0 +1,37 @@
+/* 图片操作插件样式 */
+.image-operations-float-panel {
+  position: fixed;
+  background: var(--b3-theme-surface);
+  border: 1px solid var(--b3-border-color);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  z-index: 1000;
+  display: none;
+}
+
+.image-operations-toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.image-operations-button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--b3-theme-on-surface);
+}
+
+.image-operations-button:hover {
+  background: var(--b3-theme-hover);
+}
+
+.image-operations-button:active {
+  background: var(--b3-theme-active);
+}
