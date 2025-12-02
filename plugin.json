@@ -2,10 +2,14 @@
   "name": "sy-plugin-image-tools",
   "author": "eter",
   "url": "https://github.com/rongfeideng/sy-plugin-image-tools",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "minAppVersion": "3.0.12",
-  "backends": ["all"],
-  "frontends": ["all"],
+  "backends": [
+    "all"
+  ],
+  "frontends": [
+    "all"
+  ],
   "displayName": {
     "en_US": "Image Operations",
     "zh_CN": "图片操作工具"
@@ -13,9 +17,5 @@
   "description": {
     "en_US": "提供图片点击弹出菜单，支持旋转等操作",
     "zh_CN": "点击笔记中的图片弹出操作菜单，支持旋转并保存覆盖原图"
-  },
-  "readme": {
-    "en_US": "README.md",
-    "zh_CN": "README_zh_CN.md"
   }
 }
