@@ -21,6 +21,7 @@ echo "Zipping plugin..."
 zip -r $plugin_dir.zip $plugin_dir
 echo "Build and deploy completed successfully!"
 
+exit 0
 echo deploy local...
 
 # local_deployment_dir='/mnd/d/snail/Siyuan/data/plugins/'
