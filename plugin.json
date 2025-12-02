@@ -1,7 +1,7 @@
 {
   "name": "sy-plugin-image-tools",
   "author": "eter",
-  "url": "https://github.com/rongfeideng/sy-plugin-image-tools",
+  "url": "https://github.com/snail-vs/sy-plugin-image-tools",
   "version": "0.0.1",
   "minAppVersion": "3.0.12",
   "backends": [
