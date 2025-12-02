@@ -1,6 +1,6 @@
 {
   "name": "sy-plugin-image-tools",
-  "author": "eter",
+  "author": "snail-vs",
   "url": "https://github.com/snail-vs/sy-plugin-image-tools",
   "version": "0.0.1",
   "minAppVersion": "3.0.12",
@@ -10,12 +10,26 @@
   "frontends": [
     "all"
   ],
+  "disabledInPublish": false,
   "displayName": {
     "en_US": "Image Operations",
     "zh_CN": "图片操作工具"
   },
   "description": {
-    "en_US": "提供图片点击弹出菜单，支持旋转等操作",
+    "en_US": "The image element should support a click event to display a context menu, which includes options like rotation.",
     "zh_CN": "点击笔记中的图片弹出操作菜单，支持旋转并保存覆盖原图"
-  }
+  },
+  "readme": {
+    "default": "README.md",
+    "zh_CN": "README_zh_CN.md"
+  },
+  "keywords": [
+    "image",
+    "tools",
+    "图片",
+    "图片预览",
+    "图片旋转",
+    "图片编辑",
+    "图片处理"
+  ]
 }
