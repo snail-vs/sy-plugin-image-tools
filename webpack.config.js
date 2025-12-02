@@ -10,7 +10,10 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js',
-    clean: true
+    clean: true,
+    library: {
+      type: 'commonjs2'
+    }
   },
   externals: {
     siyuan: 'commonjs siyuan'

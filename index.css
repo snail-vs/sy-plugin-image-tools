@@ -1,40 +1,70 @@
 /* 图片操作插件样式 */
 .image-operations-float-panel {
   position: fixed;
-  background: var(--b3-theme-surface);
-  border: 1px solid var(--b3-border-color);
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  padding: 8px;
-  z-index: 1000;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 8px 16px;
+  z-index: 2100;
+  /* Ensure it's above the preview mask (2000) */
   display: none;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.image-operations-float-panel.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Dark mode support for toolbar */
+[data-theme-mode="dark"] .image-operations-float-panel {
+  background: rgba(30, 30, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .image-operations-toolbar {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  align-items: center;
 }
 
 .image-operations-button {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--b3-theme-on-surface);
-  font-size: 16px;
+  color: #333;
+  font-size: 18px;
+  transition: all 0.2s ease;
+}
+
+[data-theme-mode="dark"] .image-operations-button {
+  color: #eee;
 }
 
 .image-operations-button:hover {
-  background: var(--b3-theme-hover);
+  background: rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+[data-theme-mode="dark"] .image-operations-button:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .image-operations-button:active {
-  background: var(--b3-theme-active);
+  transform: translateY(0);
 }
 
 /* 预览面板样式 */
@@ -42,43 +72,56 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   z-index: 2000;
   display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.image-operations-preview-panel.active {
+  opacity: 1;
 }
 
 .image-operations-preview-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .image-operations-preview-content {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+  /* Let clicks pass through to overlay for closing */
 }
 
 .image-operations-preview-header {
   position: absolute;
   top: 20px;
   right: 20px;
-  z-index: 10;
+  z-index: 2200;
+  pointer-events: auto;
 }
 
 .image-operations-preview-close {
   width: 40px;
   height: 40px;
   border: none;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -87,24 +130,30 @@
   color: white;
   font-size: 24px;
   transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
 }
 
 .image-operations-preview-close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg);
 }
 
 .image-operations-preview-body {
-  max-width: 90%;
-  max-height: 90%;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+  pointer-events: auto;
 }
 
 .image-operations-preview-body img {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 90%;
+  max-height: 85%;
   object-fit: contain;
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }

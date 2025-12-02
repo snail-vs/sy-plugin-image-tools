@@ -16,6 +16,7 @@ class ImageOperationsPlugin extends siyuan.Plugin {
     this.currentImage = null;
     this.floatPanel = null;
     this.previewPanel = null;
+    this.previewRotation = 0; // 预览图片的旋转角度(独立于原图)
   }
 
   /**
@@ -32,7 +33,7 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    * 初始化浮动操作面板
    */
   initFloatPanel() {
-    // 创建浮动面板
+    // 创建底部工具栏
     this.floatPanel = document.createElement('div');
     this.floatPanel.className = 'image-operations-float-panel';
     this.floatPanel.innerHTML = `
@@ -43,11 +44,11 @@ class ImageOperationsPlugin extends siyuan.Plugin {
         <button class="image-operations-button" id="rotate-right" title="顺时针旋转">
           ↻
         </button>
-        <button class="image-operations-button" id="preview" title="预览图片">
-          🔍
-        </button>
         <button class="image-operations-button" id="save" title="保存图片">
           💾
+        </button>
+        <button class="image-operations-button" id="close-preview" title="关闭预览">
+          ✕
         </button>
       </div>
     `;
@@ -67,9 +68,6 @@ class ImageOperationsPlugin extends siyuan.Plugin {
     this.previewPanel.innerHTML = `
       <div class="image-operations-preview-overlay"></div>
       <div class="image-operations-preview-content">
-        <div class="image-operations-preview-header">
-          <button class="image-operations-preview-close" id="preview-close">×</button>
-        </div>
         <div class="image-operations-preview-body">
           <img id="preview-image" src="" alt="Preview" />
         </div>
@@ -94,14 +92,14 @@ class ImageOperationsPlugin extends siyuan.Plugin {
       this.rotateImage(90);
     });
 
-    // 预览按钮事件
-    this.floatPanel.querySelector('#preview').addEventListener('click', () => {
-      this.showPreview();
-    });
-
     // 保存按钮事件
     this.floatPanel.querySelector('#save').addEventListener('click', () => {
       this.saveImage();
+    });
+
+    // 关闭预览事件
+    this.floatPanel.querySelector('#close-preview').addEventListener('click', () => {
+      this.hidePreview();
     });
   }
 
@@ -109,11 +107,6 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    * 绑定预览面板事件
    */
   bindPreviewPanelEvents() {
-    // 关闭预览
-    this.previewPanel.querySelector('#preview-close').addEventListener('click', () => {
-      this.hidePreview();
-    });
-
     // 点击遮罩关闭预览
     this.previewPanel.querySelector('.image-operations-preview-overlay').addEventListener('click', () => {
       this.hidePreview();
@@ -130,33 +123,60 @@ class ImageOperationsPlugin extends siyuan.Plugin {
       if (target.tagName === 'IMG') {
         e.preventDefault();
         e.stopPropagation();
-        this.showFloatPanel(target, e.clientX, e.clientY);
-      } else {
-        // 点击其他区域隐藏浮动面板
-        this.hideFloatPanel();
+        this.showPreviewWithToolbar(target);
+      } else if (!this.floatPanel.contains(target) && !this.previewPanel.contains(target)) {
+        // 点击其他区域且不是工具栏和预览面板内元素时隐藏
+        this.hidePreview();
       }
     });
   }
 
   /**
-   * 显示浮动操作面板
+   * 显示图片预览和底部工具栏
    * @param {HTMLImageElement} image - 点击的图片元素
-   * @param {number} x - 鼠标X坐标
-   * @param {number} y - 鼠标Y坐标
    */
-  showFloatPanel(image, x, y) {
+  showPreviewWithToolbar(image) {
     this.currentImage = image;
-    this.floatPanel.style.left = `${x}px`;
-    this.floatPanel.style.top = `${y}px`;
+
+    // 显示预览面板
+    this.showPreview();
+
+    // 显示底部工具栏
     this.floatPanel.style.display = 'block';
+    // Force reflow
+    this.floatPanel.offsetHeight;
+    this.floatPanel.classList.add('active');
+
+    // 动态调整工具栏位置
+    this.updateToolbarPosition();
   }
 
   /**
-   * 隐藏浮动操作面板
+   * 更新工具栏位置（紧挨图片底部或屏幕底部）
    */
-  hideFloatPanel() {
-    this.floatPanel.style.display = 'none';
-    this.currentImage = null;
+  updateToolbarPosition() {
+    const previewImage = this.previewPanel.querySelector('#preview-image');
+    if (!previewImage) return;
+
+    // 等待图片加载和动画完成
+    setTimeout(() => {
+      const imageRect = previewImage.getBoundingClientRect();
+      const imageBottom = imageRect.bottom;
+      const viewportHeight = window.innerHeight;
+      const toolbarHeight = this.floatPanel.offsetHeight;
+
+      // 如果图片底部在视窗内，工具栏紧挨图片底部
+      // 否则固定在屏幕底部
+      if (imageBottom + toolbarHeight + 20 <= viewportHeight) {
+        // 图片底部 + 一点间距
+        this.floatPanel.style.bottom = 'auto';
+        this.floatPanel.style.top = `${imageBottom + 10}px`;
+      } else {
+        // 固定在屏幕底部
+        this.floatPanel.style.top = 'auto';
+        this.floatPanel.style.bottom = '30px';
+      }
+    }, 350); // 等待预览面板动画完成
   }
 
   /**
@@ -164,17 +184,36 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    */
   showPreview() {
     if (!this.currentImage) return;
-    
+
+    // 重置预览旋转角度
+    this.previewRotation = 0;
+
     const previewImage = this.previewPanel.querySelector('#preview-image');
     previewImage.src = this.currentImage.src;
+    previewImage.style.transform = 'rotate(0deg)'; // 预览图片总是从0度开始
+
     this.previewPanel.style.display = 'block';
+    // Force reflow to enable transition
+    this.previewPanel.offsetHeight;
+    this.previewPanel.classList.add('active');
   }
 
   /**
-   * 隐藏图片预览
+   * 隐藏图片预览和工具栏
    */
   hidePreview() {
-    this.previewPanel.style.display = 'none';
+    this.previewPanel.classList.remove('active');
+    this.floatPanel.classList.remove('active');
+
+    // Wait for transition to finish before hiding display
+    setTimeout(() => {
+      if (!this.previewPanel.classList.contains('active')) {
+        this.previewPanel.style.display = 'none';
+        this.floatPanel.style.display = 'none';
+      }
+    }, 300);
+
+    this.currentImage = null;
   }
 
   /**
@@ -183,25 +222,17 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    */
   rotateImage(angle) {
     if (!this.currentImage) return;
-    
-    // 获取当前旋转角度
-    let currentAngle = parseInt(this.currentImage.dataset.rotate || '0');
-    
-    // 计算新的旋转角度
-    let newAngle = (currentAngle + angle) % 360;
-    if (newAngle < 0) {
-      newAngle += 360;
-    }
-    
-    // 应用旋转效果
-    this.currentImage.style.transform = `rotate(${newAngle}deg)`;
-    this.currentImage.dataset.rotate = newAngle;
-    
-    // 更新预览图（如果预览面板打开）
+
+    // 使用累积角度，不取模，避免动画反向
+    this.previewRotation += angle;
+
+    // 只旋转预览图，不影响文档中的原图
     const previewImage = this.previewPanel.querySelector('#preview-image');
-    if (previewImage.src === this.currentImage.src && this.previewPanel.style.display === 'block') {
-      previewImage.style.transform = `rotate(${newAngle}deg)`;
-      previewImage.dataset.rotate = newAngle;
+    if (previewImage && this.previewPanel.style.display === 'block') {
+      previewImage.style.transform = `rotate(${this.previewRotation}deg)`;
+
+      // 旋转后重新计算工具栏位置
+      this.updateToolbarPosition();
     }
   }
 
@@ -210,14 +241,15 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    */
   saveImage() {
     if (!this.currentImage) return;
-    
+
     const image = this.currentImage;
-    const rotate = parseInt(image.dataset.rotate || '0');
-    
+    // 将累积角度标准化到 0-360 范围
+    const rotate = ((this.previewRotation % 360) + 360) % 360;
+
     // 创建Canvas元素
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     // 加载原图
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -230,14 +262,14 @@ class ImageOperationsPlugin extends siyuan.Plugin {
         canvas.width = img.width;
         canvas.height = img.height;
       }
-      
+
       // 旋转Canvas上下文
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate(rotate * Math.PI / 180);
       ctx.drawImage(img, -img.width / 2, -img.height / 2);
       ctx.restore();
-      
+
       // 转换为Blob并保存
       canvas.toBlob((blob) => {
         if (blob) {
@@ -265,19 +297,19 @@ class ImageOperationsPlugin extends siyuan.Plugin {
     // 从URL中提取文件名
     const parts = url.split('/');
     let filename = parts[parts.length - 1];
-    
+
     // 移除查询参数
     const queryIndex = filename.indexOf('?');
     if (queryIndex > -1) {
       filename = filename.substring(0, queryIndex);
     }
-    
+
     // 移除哈希值
     const hashIndex = filename.indexOf('#');
     if (hashIndex > -1) {
       filename = filename.substring(0, hashIndex);
     }
-    
+
     return filename;
   }
 
