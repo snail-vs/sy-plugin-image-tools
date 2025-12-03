@@ -17,6 +17,19 @@ class ImageOperationsPlugin extends siyuan.Plugin {
     this.floatPanel = null;
     this.previewPanel = null;
     this.previewRotation = 0; // 预览图片的旋转角度(独立于原图)
+
+    // 缩放相关状态
+    this.previewScale = 1;        // 当前缩放比例
+    this.minScale = 0.5;          // 最小缩放比例
+    this.maxScale = 3;            // 最大缩放比例
+    this.scaleStep = 0.05;        // 缩放步长 5%
+
+    // 拖拽相关状态
+    this.isDragging = false;
+    this.dragStartX = 0;
+    this.dragStartY = 0;
+    this.translateX = 0;
+    this.translateY = 0;
   }
 
   /**
@@ -44,10 +57,22 @@ class ImageOperationsPlugin extends siyuan.Plugin {
         <button class="image-operations-button" id="rotate-right" title="顺时针旋转">
           ↻
         </button>
+        <span class="image-operations-divider"></span>
+        <button class="image-operations-button" id="zoom-out" title="缩小 (-)">
+          −
+        </button>
+        <span class="image-operations-scale-display" id="scale-display">100%</span>
+        <button class="image-operations-button" id="zoom-in" title="放大 (+)">
+          +
+        </button>
+        <button class="image-operations-button" id="zoom-reset" title="重置大小 (0)">
+          ⊙
+        </button>
+        <span class="image-operations-divider"></span>
         <button class="image-operations-button" id="save" title="保存图片">
           💾
         </button>
-        <button class="image-operations-button" id="close-preview" title="关闭预览">
+        <button class="image-operations-button" id="close-preview" title="关闭预览 (Esc)">
           ✕
         </button>
       </div>
@@ -92,6 +117,19 @@ class ImageOperationsPlugin extends siyuan.Plugin {
       this.rotateImage(90);
     });
 
+    // 缩放按钮事件
+    this.floatPanel.querySelector('#zoom-out').addEventListener('click', () => {
+      this.zoomImage(-this.scaleStep);
+    });
+
+    this.floatPanel.querySelector('#zoom-in').addEventListener('click', () => {
+      this.zoomImage(this.scaleStep);
+    });
+
+    this.floatPanel.querySelector('#zoom-reset').addEventListener('click', () => {
+      this.resetZoom();
+    });
+
     // 保存按钮事件
     this.floatPanel.querySelector('#save').addEventListener('click', () => {
       this.saveImage();
@@ -107,9 +145,66 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    * 绑定预览面板事件
    */
   bindPreviewPanelEvents() {
+    const previewImage = this.previewPanel.querySelector('#preview-image');
+
     // 点击遮罩关闭预览
     this.previewPanel.querySelector('.image-operations-preview-overlay').addEventListener('click', () => {
       this.hidePreview();
+    });
+
+    // 滚轮缩放
+    previewImage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+
+      const delta = e.deltaY > 0 ? -this.scaleStep : this.scaleStep;
+      const oldScale = this.previewScale;
+      const newScale = Math.max(this.minScale, Math.min(this.maxScale, this.previewScale + delta));
+
+      if (newScale !== oldScale) {
+        // 计算缩放中心点偏移,以鼠标位置为中心
+        const rect = previewImage.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+
+        const scaleRatio = newScale / oldScale;
+        this.translateX = this.translateX * scaleRatio + mouseX * (1 - scaleRatio);
+        this.translateY = this.translateY * scaleRatio + mouseY * (1 - scaleRatio);
+
+        this.previewScale = newScale;
+        this.applyTransform();
+        this.updateScaleDisplay();
+      }
+    }, { passive: false });
+
+    // 双击重置
+    previewImage.addEventListener('dblclick', () => {
+      this.resetZoom();
+    });
+
+    // 拖拽移动
+    previewImage.addEventListener('mousedown', (e) => {
+      // 任何缩放比例都支持拖拽
+      this.isDragging = true;
+      this.dragStartX = e.clientX - this.translateX;
+      this.dragStartY = e.clientY - this.translateY;
+      previewImage.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (this.isDragging) {
+        this.translateX = e.clientX - this.dragStartX;
+        this.translateY = e.clientY - this.dragStartY;
+        this.applyTransform();
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (this.isDragging) {
+        this.isDragging = false;
+        const previewImage = this.previewPanel.querySelector('#preview-image');
+        previewImage.style.cursor = 'grab';
+      }
     });
   }
 
@@ -127,6 +222,31 @@ class ImageOperationsPlugin extends siyuan.Plugin {
       } else if (!this.floatPanel.contains(target) && !this.previewPanel.contains(target)) {
         // 点击其他区域且不是工具栏和预览面板内元素时隐藏
         this.hidePreview();
+      }
+    });
+
+    // 键盘快捷键
+    document.addEventListener('keydown', (e) => {
+      // 只在预览模式下响应快捷键
+      if (this.previewPanel.style.display === 'block') {
+        switch (e.key) {
+          case 'Escape':
+            this.hidePreview();
+            break;
+          case '+':
+          case '=':
+            e.preventDefault();
+            this.zoomImage(this.scaleStep);
+            break;
+          case '-':
+            e.preventDefault();
+            this.zoomImage(-this.scaleStep);
+            break;
+          case '0':
+            e.preventDefault();
+            this.resetZoom();
+            break;
+        }
       }
     });
   }
@@ -185,12 +305,17 @@ class ImageOperationsPlugin extends siyuan.Plugin {
   showPreview() {
     if (!this.currentImage) return;
 
-    // 重置预览旋转角度
+    // 重置所有状态
     this.previewRotation = 0;
+    this.previewScale = 1;
+    this.translateX = 0;
+    this.translateY = 0;
 
     const previewImage = this.previewPanel.querySelector('#preview-image');
     previewImage.src = this.currentImage.src;
-    previewImage.style.transform = 'rotate(0deg)'; // 预览图片总是从0度开始
+    previewImage.style.cursor = 'grab';
+    this.applyTransform();
+    this.updateScaleDisplay();
 
     this.previewPanel.style.display = 'block';
     // Force reflow to enable transition
@@ -223,16 +348,71 @@ class ImageOperationsPlugin extends siyuan.Plugin {
   rotateImage(angle) {
     if (!this.currentImage) return;
 
-    // 使用累积角度，不取模，避免动画反向
+    // 使用累积角度,不取模,避免动画反向
     this.previewRotation += angle;
 
-    // 只旋转预览图，不影响文档中的原图
+    // 只旋转预览图,不影响文档中的原图
     const previewImage = this.previewPanel.querySelector('#preview-image');
     if (previewImage && this.previewPanel.style.display === 'block') {
-      previewImage.style.transform = `rotate(${this.previewRotation}deg)`;
+      this.applyTransform();
 
       // 旋转后重新计算工具栏位置
       this.updateToolbarPosition();
+    }
+  }
+
+  /**
+   * 应用变换(缩放、旋转、平移)
+   */
+  applyTransform() {
+    const previewImage = this.previewPanel.querySelector('#preview-image');
+    if (!previewImage) return;
+
+    // 组合所有变换: 先平移,再旋转,最后缩放
+    previewImage.style.transform =
+      `translate(${this.translateX}px, ${this.translateY}px) 
+       rotate(${this.previewRotation}deg) 
+       scale(${this.previewScale})`;
+  }
+
+  /**
+   * 缩放图片
+   * @param {number} delta - 缩放增量
+   */
+  zoomImage(delta) {
+    if (!this.currentImage) return;
+
+    const oldScale = this.previewScale;
+    const newScale = Math.max(this.minScale, Math.min(this.maxScale, this.previewScale + delta));
+
+    if (newScale !== oldScale) {
+      // 按钮缩放以图片中心为基准,不需要调整translate
+      this.previewScale = newScale;
+      this.applyTransform();
+      this.updateScaleDisplay();
+    }
+  }
+
+  /**
+   * 重置缩放
+   */
+  resetZoom() {
+    if (!this.currentImage) return;
+
+    this.previewScale = 1;
+    this.translateX = 0;
+    this.translateY = 0;
+    this.applyTransform();
+    this.updateScaleDisplay();
+  }
+
+  /**
+   * 更新缩放比例显示
+   */
+  updateScaleDisplay() {
+    const scaleDisplay = this.floatPanel.querySelector('#scale-display');
+    if (scaleDisplay) {
+      scaleDisplay.textContent = `${Math.round(this.previewScale * 100)}%`;
     }
   }
 
