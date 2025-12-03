@@ -16,26 +16,14 @@ cp -f dist/styles.css $plugin_dir/index.css
 cp -f plugin.json $plugin_dir
 cp -f icon.png $plugin_dir
 cp -f preview.png $plugin_dir
+cp -f README_zh_CN.md $plugin_dir
+cp -f README.md $plugin_dir
 
 echo "Zipping plugin..."
-zip -r $plugin_dir.zip $plugin_dir
+cd $plugin_dir
+rm .DS_Store
+zip -r $plugin_dir.zip .
+mv $plugin_dir.zip package.zip
+cd -
 echo "Build and deploy completed successfully!"
 
-exit 0
-echo deploy local...
-
-# local_deployment_dir='/mnd/d/snail/Siyuan/data/plugins/'
-local_deployment_dir='/Users/rongfeideng/sada/data/plugins/'
-rm -f $local_deployment_dir$plugin_dir.zip
-rm -rf "$local_deployment_dir$plugin_dir"
-cp -f $plugin_dir.zip $local_deployment_dir
-cd $local_deployment_dir
-unzip -o $plugin_dir.zip
-rm $plugin_dir.zip
-
-cd -
-rm -rf $plugin_dir
-rm $plugin_dir.zip
-rm -rf dist
-
-echo 'deploy local completed successfully!'
