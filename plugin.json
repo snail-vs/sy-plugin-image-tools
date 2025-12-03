@@ -16,8 +16,8 @@
     "zh_CN": "图片操作工具"
   },
   "description": {
-    "default": "The image element should support a click event to display a context menu, which includes options like rotation.",
-    "zh_CN": "点击笔记中的图片弹出操作菜单，支持旋转并保存覆盖原图"
+    "default": "Click on images to preview with zoom, rotate, and drag features. Support mouse wheel zoom and keyboard shortcuts.",
+    "zh_CN": "点击笔记中的图片弹出操作菜单，支持缩放、旋转、拖拽移动，并保存覆盖原图"
   },
   "readme": {
     "default": "README.md",
@@ -26,8 +26,11 @@
   "keywords": [
     "image",
     "tools",
+    "zoom",
+    "rotate",
     "图片",
     "图片预览",
+    "图片缩放",
     "图片旋转",
     "图片编辑",
     "图片处理"

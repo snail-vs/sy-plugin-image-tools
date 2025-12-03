@@ -4,16 +4,26 @@ A plugin for SiYuan Note that provides image manipulation features when clicking
 
 ## Features
 
-- Click on an image to show a floating toolbar
+- Click on an image to show fullscreen preview with floating toolbar
 - Rotate images left or right
-- Save changes to overwrite the original image
+- Zoom in/out images
+- Drag to move images
+- Save rotated images
 
 ## Usage
 
-1. Click on any image in your notes
-2. A floating toolbar will appear with rotation options
-3. Click the rotation buttons to rotate the image
-4. Click save to apply changes to the original image
+1. Click on any image in your notes to open preview
+2. Use toolbar buttons or shortcuts to manipulate the image:
+   - **Rotate**: Click ↺ / ↻ buttons
+   - **Zoom**: Click − / + buttons, or use mouse wheel
+   - **Reset**: Click ⊙ button or double-click the image
+   - **Drag**: Hold left mouse button and drag
+   - **Save**: Click 💾 button to save rotated image
+3. Keyboard shortcuts:
+   - `+` / `=`: Zoom in
+   - `-`: Zoom out
+   - `0`: Reset zoom
+   - `Esc`: Close preview
 
 ## Installation
 
