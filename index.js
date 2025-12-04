@@ -150,10 +150,22 @@ class ImageOperationsPlugin extends siyuan.Plugin {
    */
   bindPreviewPanelEvents() {
     const previewImage = this.previewPanel.querySelector('#preview-image');
+    const previewContent = this.previewPanel.querySelector('.image-operations-preview-content');
+    const previewOverlay = this.previewPanel.querySelector('.image-operations-preview-overlay');
 
-    // 点击遮罩关闭预览
-    this.previewPanel.querySelector('.image-operations-preview-overlay').addEventListener('click', () => {
+    // 点击遮罩层关闭预览
+    previewOverlay.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.hidePreview();
+    });
+
+    // 点击预览内容区域（非图片）也关闭预览
+    previewContent.addEventListener('click', (e) => {
+      // 只有点击的是内容区域本身（不是图片）时才关闭
+      if (e.target === previewContent) {
+        e.stopPropagation();
+        this.hidePreview();
+      }
     });
 
     // 滚轮缩放
@@ -326,20 +338,21 @@ class ImageOperationsPlugin extends siyuan.Plugin {
         e.preventDefault();
         e.stopPropagation();
         this.showPreviewWithToolbar(target);
-      } else if (!this.floatPanel.contains(target) && !this.previewPanel.contains(target)) {
-        // 点击其他区域且不是工具栏和预览面板内元素时隐藏
-        this.hidePreview();
       }
     });
 
-    // 键盘快捷键
+    // 键盘快捷键 - 使用捕获阶段以提高优先级
     document.addEventListener('keydown', (e) => {
-      // 只在预览模式下响应快捷键
-      if (this.previewPanel.style.display === 'block') {
+      // 检查预览面板是否激活
+      if (this.previewPanel && this.previewPanel.classList.contains('active')) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.hidePreview();
+          return;
+        }
+
         switch (e.key) {
-          case 'Escape':
-            this.hidePreview();
-            break;
           case '+':
           case '=':
             e.preventDefault();
@@ -355,8 +368,9 @@ class ImageOperationsPlugin extends siyuan.Plugin {
             break;
         }
       }
-    });
+    }, true); // 使用捕获阶段
   }
+
 
   /**
    * 显示图片预览和底部工具栏
