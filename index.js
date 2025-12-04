@@ -30,6 +30,10 @@ class ImageOperationsPlugin extends siyuan.Plugin {
     this.dragStartY = 0;
     this.translateX = 0;
     this.translateY = 0;
+
+    // 触摸相关状态
+    this.initialPinchDistance = 0;
+    this.lastPinchScale = 1;
   }
 
   /**
@@ -205,6 +209,109 @@ class ImageOperationsPlugin extends siyuan.Plugin {
         const previewImage = this.previewPanel.querySelector('#preview-image');
         previewImage.style.cursor = 'grab';
       }
+    });
+
+    // 触摸事件支持
+    this.bindTouchEvents(previewImage);
+  }
+
+  /**
+   * 绑定触摸事件（支持双指缩放和单指拖拽）
+   * @param {HTMLElement} previewImage - 预览图片元素
+   */
+  bindTouchEvents(previewImage) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isTouching = false;
+
+    // 触摸开始
+    previewImage.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        // 单指拖拽
+        isTouching = true;
+        touchStartX = e.touches[0].clientX - this.translateX;
+        touchStartY = e.touches[0].clientY - this.translateY;
+        e.preventDefault();
+      } else if (e.touches.length === 2) {
+        // 双指缩放
+        isTouching = false; // 停止拖拽
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        this.initialPinchDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        this.lastPinchScale = this.previewScale;
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // 触摸移动
+    previewImage.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && isTouching) {
+        // 单指拖拽
+        this.translateX = e.touches[0].clientX - touchStartX;
+        this.translateY = e.touches[0].clientY - touchStartY;
+        this.applyTransform();
+        e.preventDefault();
+      } else if (e.touches.length === 2) {
+        // 双指缩放
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+
+        if (this.initialPinchDistance > 0) {
+          const scaleChange = currentDistance / this.initialPinchDistance;
+          const newScale = Math.max(
+            this.minScale,
+            Math.min(this.maxScale, this.lastPinchScale * scaleChange)
+          );
+
+          if (newScale !== this.previewScale) {
+            // 计算两指中心点
+            const centerX = (touch1.clientX + touch2.clientX) / 2;
+            const centerY = (touch1.clientY + touch2.clientY) / 2;
+
+            // 计算相对于图片的中心点偏移
+            const rect = previewImage.getBoundingClientRect();
+            const offsetX = centerX - rect.left - rect.width / 2;
+            const offsetY = centerY - rect.top - rect.height / 2;
+
+            // 调整平移以保持缩放中心点位置
+            const scaleRatio = newScale / this.previewScale;
+            this.translateX = this.translateX * scaleRatio + offsetX * (1 - scaleRatio);
+            this.translateY = this.translateY * scaleRatio + offsetY * (1 - scaleRatio);
+
+            this.previewScale = newScale;
+            this.applyTransform();
+            this.updateScaleDisplay();
+          }
+        }
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // 触摸结束
+    previewImage.addEventListener('touchend', (e) => {
+      if (e.touches.length === 0) {
+        isTouching = false;
+        this.initialPinchDistance = 0;
+      } else if (e.touches.length === 1) {
+        // 从双指变为单指，重新初始化拖拽
+        isTouching = true;
+        touchStartX = e.touches[0].clientX - this.translateX;
+        touchStartY = e.touches[0].clientY - this.translateY;
+        this.initialPinchDistance = 0;
+      }
+    });
+
+    // 触摸取消
+    previewImage.addEventListener('touchcancel', () => {
+      isTouching = false;
+      this.initialPinchDistance = 0;
     });
   }
 
