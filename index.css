@@ -190,3 +190,46 @@
 .image-operations-preview-body img:active {
   cursor: grabbing;
 }
+
+/* 消息提示样式 */
+.image-operations-message {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  z-index: 3000;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.image-operations-message.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 成功消息 */
+.image-operations-message-success {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+}
+
+/* 错误消息 */
+.image-operations-message-error {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+}
+
+/* 警告消息 */
+.image-operations-message-warning {
+  background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+}
+
+/* 信息消息 */
+.image-operations-message-info {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+}
