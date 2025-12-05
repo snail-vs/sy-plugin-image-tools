@@ -538,14 +538,20 @@ class ImageOperationsPlugin extends siyuan.Plugin {
   }
 
   /**
-   * 保存图片
+   * 保存图片(覆盖原图)
    */
-  saveImage() {
+  async saveImage() {
     if (!this.currentImage) return;
 
     const image = this.currentImage;
     // 将累积角度标准化到 0-360 范围
     const rotate = ((this.previewRotation % 360) + 360) % 360;
+
+    // 如果没有旋转,不需要保存
+    if (rotate === 0) {
+      this.showMessage('图片未旋转,无需保存', 'info');
+      return;
+    }
 
     // 创建Canvas元素
     const canvas = document.createElement('canvas');
@@ -554,39 +560,163 @@ class ImageOperationsPlugin extends siyuan.Plugin {
     // 加载原图
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      // 根据旋转角度调整Canvas大小
-      if (rotate === 90 || rotate === 270) {
-        canvas.width = img.height;
-        canvas.height = img.width;
-      } else {
-        canvas.width = img.width;
-        canvas.height = img.height;
+    img.onload = async () => {
+      try {
+        // 根据旋转角度调整Canvas大小
+        if (rotate === 90 || rotate === 270) {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+
+        // 旋转Canvas上下文
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(rotate * Math.PI / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        ctx.restore();
+
+        // 转换为Blob
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            this.showMessage('图片处理失败', 'error');
+            return;
+          }
+
+          // 尝试覆盖原图
+          const success = await this.overwriteImage(image.src, blob);
+
+          if (success) {
+            // 覆盖成功,刷新图片显示
+            this.refreshImage(image);
+            this.showMessage('保存成功', 'success');
+
+            // 重置预览旋转角度
+            this.previewRotation = 0;
+            this.applyTransform();
+          } else {
+            // 覆盖失败,回退到另存为
+            this.showMessage('覆盖失败,使用另存为', 'warning');
+            this.downloadImage(blob, this.getFileNameFromUrl(image.src));
+          }
+        }, 'image/png');
+      } catch (error) {
+        console.error('保存图片失败:', error);
+        this.showMessage('保存失败: ' + error.message, 'error');
+      }
+    };
+
+    img.onerror = () => {
+      this.showMessage('图片加载失败', 'error');
+    };
+
+    img.src = image.src;
+  }
+
+  /**
+   * 覆盖原图文件
+   * @param {string} imageSrc - 图片URL
+   * @param {Blob} blob - 图片数据
+   * @returns {Promise<boolean>} - 是否成功
+   */
+  async overwriteImage(imageSrc, blob) {
+    try {
+      // 从URL中提取路径
+      const url = new URL(imageSrc);
+      const pathname = url.pathname; // "/assets/image-xxx.png"
+
+      // 去掉开头的斜杠,然后添加 data/ 前缀
+      const relativePath = pathname.startsWith('/') ? pathname.substring(1) : pathname;
+      const filePath = 'data/' + relativePath;
+
+      // 获取文件名
+      const filename = this.getFileNameFromUrl(imageSrc);
+
+      // 构造FormData
+      const formData = new FormData();
+      formData.append('path', filePath);
+      formData.append('isDir', 'false');
+      formData.append('modTime', Math.floor(Date.now() / 1000).toString());
+      formData.append('file', blob, filename);
+
+      // 调用思源API
+      const response = await fetch('/api/file/putFile', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        console.error('API调用失败:', response.status, response.statusText);
+        return false;
       }
 
-      // 旋转Canvas上下文
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate(rotate * Math.PI / 180);
-      ctx.drawImage(img, -img.width / 2, -img.height / 2);
-      ctx.restore();
+      const result = await response.json();
+      return result.code === 0;
+    } catch (error) {
+      console.error('覆盖图片失败:', error);
+      return false;
+    }
+  }
 
-      // 转换为Blob并保存
-      canvas.toBlob((blob) => {
-        if (blob) {
-          // 创建下载链接
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = this.getFileNameFromUrl(image.src);
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-      }, 'image/png');
-    };
-    img.src = image.src;
+  /**
+   * 刷新图片显示(添加时间戳强制刷新)
+   * @param {HTMLImageElement} image - 图片元素
+   */
+  refreshImage(image) {
+    // 移除旧的时间戳参数
+    const baseUrl = image.src.split('?')[0];
+    // 添加新的时间戳参数强制刷新
+    image.src = baseUrl + '?t=' + Date.now();
+
+    // 同时刷新预览图片
+    const previewImage = this.previewPanel.querySelector('#preview-image');
+    if (previewImage) {
+      previewImage.src = image.src;
+    }
+  }
+
+  /**
+   * 下载图片(另存为)
+   * @param {Blob} blob - 图片数据
+   * @param {string} filename - 文件名
+   */
+  downloadImage(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * 显示消息提示
+   * @param {string} message - 消息内容
+   * @param {string} type - 消息类型: success/error/warning/info
+   */
+  showMessage(message, type = 'info') {
+    // 创建消息元素
+    const messageEl = document.createElement('div');
+    messageEl.className = `image-operations-message image-operations-message-${type}`;
+    messageEl.textContent = message;
+    document.body.appendChild(messageEl);
+
+    // 显示动画
+    setTimeout(() => {
+      messageEl.classList.add('active');
+    }, 10);
+
+    // 3秒后自动隐藏
+    setTimeout(() => {
+      messageEl.classList.remove('active');
+      setTimeout(() => {
+        document.body.removeChild(messageEl);
+      }, 300);
+    }, 3000);
   }
 
   /**
